@@ -3,6 +3,9 @@ import time
 import random
 
 
+pygame.init()
+
+
 class Entity:
     def __init__(self):
 
@@ -11,8 +14,15 @@ class Entity:
 
         w, h = display.get_width(), display.get_height()
 
-        self.rect = [random.randint(0, w - 10), random.randint(0, h - 10), 10, 10]
-        self.color = (255, 125, 125)
+        self.rect = [
+            random.randint(0, w - WIDTH),
+            random.randint(0, h - WIDTH),
+            WIDTH,
+            WIDTH,
+        ]
+        self.surface = pygame.Surface(self.rect[2:], pygame.SRCALPHA, 32)
+        self.surface.fill((0, 0, 0, 0))
+        self.surface.blit(PLAYER_IMAGE, (0, 0))
 
     def move(self, displacement_rect):
         if (
@@ -30,14 +40,13 @@ class Entity:
         self.rect[1] = min(max(0, self.rect[1]), h - self.rect[3])
 
     def render(self, display):
-        pygame.draw.rect(display, self.color, self.rect)
+        display.blit(self.surface, self.rect)
 
 
 class Player(Entity):
     def __init__(self):
         super().__init__()
         self.speed = 0.6
-        self.color = (125, 125, 255)
 
     def control(self):
         for key, pressed in enumerate(pygame.key.get_pressed()):
@@ -64,6 +73,19 @@ class NPC(Entity):
         self.move(tuple(self.movement))
 
 
+def reset_background(size):
+    global display, background_surface, BACKGROUND_IMAGE
+
+    display = pygame.display.set_mode(size, pygame.RESIZABLE)
+
+    BACKGROUND_IMAGE = pygame.transform.scale(BACKGROUND_IMAGE, size)
+
+    background = pygame.Surface(size)
+    background_surface = pygame.Surface(size)
+    background_surface.fill((0, 0, 0, 0))
+    background_surface.blit(BACKGROUND_IMAGE, (0, 0, *size))
+
+
 MOVEMENTS = {
     pygame.K_w: (0, -1),
     pygame.K_s: (0, 1),
@@ -75,19 +97,30 @@ MOVEMENTS = {
     pygame.K_RIGHT: (1, 0),
 }
 
+WIDTH = 50
+DEFAULT_SIZE = [1000, 700]
+display = pygame.display.set_mode(DEFAULT_SIZE, pygame.RESIZABLE)
+
+BACKGROUND_IMAGE = pygame.image.load("assets/grass.png")
+PLAYER_IMAGE = pygame.image.load("assets/player.png")
+PLAYER_IMAGE = pygame.transform.scale(PLAYER_IMAGE, (WIDTH, WIDTH))
+
+PLAYER_IMAGE.convert_alpha()
+BACKGROUND_IMAGE.convert_alpha()
+background_surface = None
+reset_background(DEFAULT_SIZE)
+
 
 MOVE_TIME = 0.001
 DIRECTION_CHOICE_INTERVAL = 0.1
 WALK_SPEED = 0.5
-
-display = pygame.display.set_mode([1000, 700], pygame.RESIZABLE)
 
 entities = []
 
 player = Player()
 
 entities.append(player)
-for i in range(0, 20):
+for i in range(0, 10):
     entities.append(NPC())
 
 
@@ -99,13 +132,13 @@ while running:
 
     time.sleep(0.000001)
 
-    display.fill((0, 0, 0))
+    display.blit(background_surface, (0, 0))
 
     events = pygame.event.get()
 
     for event in events:
         if event.type == pygame.VIDEORESIZE:
-            display = pygame.display.set_mode(event.dict["size"], pygame.RESIZABLE)
+            reset_background(event.dict["size"])
 
         elif event.type == pygame.QUIT:
             running = False

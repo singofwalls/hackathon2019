@@ -1,3 +1,4 @@
+from weapons import strengthBonus
 class leveling:
 
     def xpToLevelUp(currentLevel): 
