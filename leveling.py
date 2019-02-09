@@ -22,25 +22,32 @@ class leveling:
         #determines the users current level and gives them attributes depending on their level
         health = 0
         strength = 0
+        accuracy = 0
 
         if(currentLevel == 0):
             health = 5
             strength = 5
+            accuracy = 5
         elif(currentLevel == 1):
             health = 10
             strength = 10
+            accuracy = 10
         elif (currentLevel == 2):
             health = 20
             strength = 20
+            accuracy = 20
         elif (currentLevel == 3):
             health = 30
             strength = 30
+            accuracy = 30
         elif (currentLevel == 4):
             health = 40
             strength = 40
+            accuracy = 40
         elif (currentLevel == 5):
             health = 50
             strength = 50
+            accuracy = 50
             
         return strength
         return health 
