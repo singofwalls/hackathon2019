@@ -2,6 +2,8 @@ import pygame
 import time
 import random
 import json
+import requests
+from io import BytesIO
 
 from characters import Character
 
@@ -10,7 +12,7 @@ pygame.init()
 
 
 class Entity:
-    def __init__(self):
+    def __init__(self, code):
 
         self.speed = WALK_SPEED
         self.last_move = {}
@@ -23,9 +25,22 @@ class Entity:
             WIDTH,
             WIDTH,
         ]
+
+        if code == "United States":
+            for country in countries:
+                if country["country"] == "United States":
+                    code = country["code"]
+
+        response = requests.get(f"https://www.countryflags.io/{code}/flat/64.png")
+        try:
+            flag = pygame.image.load(BytesIO(response.content))
+        except pygame.error as e:
+            print(code)
+            # TODO: Fix flag crash
+
         self.surface = pygame.Surface(self.rect[2:], pygame.SRCALPHA, 32)
         self.surface.fill((0, 0, 0, 0))
-        self.surface.blit(PLAYER_IMAGE, (0, 0))
+        self.surface.blit(flag, (0, 0))
 
         self.character = Character()
 
@@ -91,7 +106,7 @@ class Entity:
 
 class Player(Entity):
     def __init__(self):
-        super().__init__()
+        super().__init__("United States")
         self.speed = WALK_SPEED * 1.1
 
     def control(self):
@@ -101,8 +116,8 @@ class Player(Entity):
 
 
 class NPC(Entity):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, code):
+        super().__init__(code)
         self.movement = None
         self.last_direction_choice = time.time()
 
@@ -134,12 +149,20 @@ def reset_background(size):
     background_surface.blit(BACKGROUND_IMAGE, (0, 0, *size))
 
 
+def get_exists(country):
+    for country in entities:
+        if country.character.name == country:
+            return True
+    return False
+
+
 def add_players():
     for i in range(0, 10):
-        npc = NPC()
-        country = random.choice(pops)
-        while not country["population"] or country["country"] in destroyed:
-            country = random.choice(pops)
+        country = random.choice(countries)
+        while not country["population"] or not country["code"] or country["country"] in destroyed or get_exists(country["country"]):
+            country = random.choice(countries)
+        npc = NPC(country["code"])
+
         npc.character.health = int(country["population"])
         npc.character.healthMax = int(country["population"])
         npc.character.name = country["country"]
@@ -147,8 +170,8 @@ def add_players():
 
 
 # Obtained json from https://github.com/samayo/country-json/blob/master/src/country-by-population.json
-with open("populations.json") as f:
-    pops = json.load(f)
+with open("countries.json") as f:
+    countries = json.load(f)
 
 MOVEMENTS = {
     pygame.K_w: (0, -1),
@@ -173,9 +196,12 @@ DEFAULT_SIZE = [1000, 700]
 display = pygame.display.set_mode(DEFAULT_SIZE, pygame.RESIZABLE)
 
 BACKGROUND_IMAGE = pygame.image.load("assets/grass.png")
+NPC_IMAGE = pygame.image.load("assets/enemy.png")
+NPC_IMAGE = pygame.transform.scale(NPC_IMAGE, (WIDTH, WIDTH))
+NPC_IMAGE.convert_alpha()
+
 PLAYER_IMAGE = pygame.image.load("assets/player.png")
 PLAYER_IMAGE = pygame.transform.scale(PLAYER_IMAGE, (WIDTH, WIDTH))
-
 PLAYER_IMAGE.convert_alpha()
 BACKGROUND_IMAGE.convert_alpha()
 background_surface = None

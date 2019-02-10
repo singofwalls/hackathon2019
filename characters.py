@@ -16,7 +16,7 @@ class Character:
     def attack(self, enemy):
         totalStrength = self.strength + self.weapon.strengthBonus
         damage = randint(0, int(self.weapon.maxHit(totalStrength)))
-        damage *= (self.health / self.healthMax) * 100
+        damage *= (self.health / self.healthMax) * 1000
 
         print("Damage is " + str(damage))
         enemy.health = enemy.health - damage
