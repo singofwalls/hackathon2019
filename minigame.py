@@ -75,15 +75,17 @@ class Entity:
         label = FONT.render(str(round(self.character.health, 0)), False, (0, 0, 0))
         display.blit(label, (self.rect[0], self.rect[1]))
 
+        highlight = (0, 0, 0, 125)
         color = (255, 255, 255)
         if isinstance(self, Player):
-            color = (125, 255, 125)
-        label = FONT.render(str(self.character.name), False, color)
-        display.blit(label, (self.rect[0], self.rect[1] + self.rect[3]))
+            highlight = (255, 255, 255, 125)
+            color = (0, 0, 0)
+        label = FONT.render(str(self.character.name), False, color, highlight)
+        display.blit(label, (self.rect[0], self.rect[1] + 10))
 
-        # if self is not player and self.target:
-        #     label = FONT.render(str(self.target.character.name), False, (255, 255, 255))
-        #     display.blit(label, (self.rect[0], self.rect[1] + 10))
+        if self is not player and self.target:
+            label = FONT.render("->" + str(self.target.character.name), False, (255, 255, 255))
+            display.blit(label, (self.rect[0], self.rect[1] + self.rect[3]))
         #     label = FONT.render(str(round(self.x_dist,0)), False, (255, 255, 255))
         #     display.blit(label, (self.rect[0], self.rect[1] + 20))
         #     label = FONT.render(str(round(self.y_dist, 0)), False, (255, 255, 255))
@@ -100,7 +102,20 @@ class Entity:
         bx2 = bx1 + entity.rect[2]
         by2 = by1 + entity.rect[3]
 
-        return ax1 < bx2 and ax2 > bx1 and ay1 < by2 and ay2 > by1
+        collided = ax1 < bx2 and ax2 > bx1 and ay1 < by2 and ay2 > by1
+        if collided and not isinstance(self, Player) and self.target == entity:
+            
+            if abs(self.x_dist) > abs(self.y_dist):
+                if self.x_dist < 0:
+                    self.rect[0] = bx2
+                elif self.x_dist > 0:
+                    self.rect[0] = bx1 - self.rect[2]
+            else:
+                if self.y_dist < 0:
+                    self.rect[1] = by2
+                elif self.y_dist > 0:
+                    self.rect[1] = by1 - self.rect[3]
+        return collided
 
 
 class Player(Entity):
@@ -176,8 +191,8 @@ def reset_background(size):
 
 
 def get_exists(country):
-    for country in entities:
-        if country.character.name == country:
+    for country_ in entities:
+        if country == country_.character.name:
             return True
     return False
 
@@ -252,7 +267,7 @@ reset_background(DEFAULT_SIZE)
 
 MOVE_TIME = 0.001
 DIRECTION_CHOICE_INTERVAL = 0.1
-WALK_SPEED = 0.7
+WALK_SPEED = 0.2
 ATTACK_INTERVAL = 0.01
 
 FONT = pygame.font.SysFont("Arial", 10)

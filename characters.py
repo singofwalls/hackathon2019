@@ -18,15 +18,15 @@ class Character:
         damage = randint(0, int(self.weapon.maxHit(totalStrength)))
         damage *= (self.health / self.healthMax) * 1000
 
-        print("Damage is " + str(damage))
+        # print("Damage is " + str(damage))
         enemy.health = enemy.health - damage
         self.health += damage
         self.healthMax += damage
 
-        if damage == 0:
-            print("%s dodged %s's attack!" % (enemy.name, self.name))
-        else:
-            print("%s attacked %s!" % (self.name, enemy.name))
+        # if damage == 0:
+        #     print("%s dodged %s's attack!" % (enemy.name, self.name))
+        # else:
+        #     print("%s attacked %s!" % (self.name, enemy.name))
 
         return enemy.health <= 0
 
