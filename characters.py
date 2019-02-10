@@ -5,7 +5,7 @@ from leveling import leveling
 
 class Character:
     def __init__(self):
-        self.name = "United States"
+        self.name = "player"
         self.leveling = leveling()
         self.strength, self.health = self.leveling.currentLevelRewards(
             self.leveling.level

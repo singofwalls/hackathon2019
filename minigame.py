@@ -4,6 +4,7 @@ import random
 import json
 import requests
 from io import BytesIO
+import math
 
 from characters import Character
 
@@ -20,27 +21,20 @@ class Entity:
         w, h = display.get_width(), display.get_height()
 
         self.rect = [
-            random.randint(0, w - WIDTH),
-            random.randint(0, h - WIDTH),
+            random.randint(50, w - WIDTH),
+            random.randint(50, h - WIDTH),
             WIDTH,
             WIDTH,
         ]
 
-        if code == "United States":
-            for country in countries:
-                if country["country"] == "United States":
-                    code = country["code"]
-
         response = requests.get(f"https://www.countryflags.io/{code}/flat/64.png")
         try:
             flag = pygame.image.load(BytesIO(response.content))
+            self.surface = pygame.Surface(self.rect[2:], pygame.SRCALPHA, 32)
+            self.surface.fill((0, 0, 0, 0))
+            self.surface.blit(flag, (0, 0))
         except pygame.error as e:
-            print(code)
-            # TODO: Fix flag crash
-
-        self.surface = pygame.Surface(self.rect[2:], pygame.SRCALPHA, 32)
-        self.surface.fill((0, 0, 0, 0))
-        self.surface.blit(flag, (0, 0))
+            self.surface = None
 
         self.character = Character()
 
@@ -65,7 +59,7 @@ class Entity:
     def check_bounds(self):
         w, h = display.get_width(), display.get_height()
         self.rect[0] = min(max(0, self.rect[0]), w - self.rect[2])
-        self.rect[1] = min(max(0, self.rect[1]), h - self.rect[3])
+        self.rect[1] = min(max(10, self.rect[1]), h - self.rect[3] - 10)
 
     def render(self, display):
         display.blit(self.surface, self.rect)
@@ -76,11 +70,10 @@ class Entity:
                 break
 
         rect = self.rect[:2] + [int(self.rect[2] * health / 100), self.rect[3] / 5]
-        rect[1] -= rect[3]
         pygame.draw.rect(display, color, rect)
 
         label = FONT.render(str(round(self.character.health, 0)), False, (0, 0, 0))
-        display.blit(label, (self.rect[0], self.rect[1] - 10))
+        display.blit(label, (self.rect[0], self.rect[1]))
 
         color = (255, 255, 255)
         if isinstance(self, Player):
@@ -88,7 +81,13 @@ class Entity:
         label = FONT.render(str(self.character.name), False, color)
         display.blit(label, (self.rect[0], self.rect[1] + self.rect[3]))
 
-
+        # if self is not player and self.target:
+        #     label = FONT.render(str(self.target.character.name), False, (255, 255, 255))
+        #     display.blit(label, (self.rect[0], self.rect[1] + 10))
+        #     label = FONT.render(str(round(self.x_dist,0)), False, (255, 255, 255))
+        #     display.blit(label, (self.rect[0], self.rect[1] + 20))
+        #     label = FONT.render(str(round(self.y_dist, 0)), False, (255, 255, 255))
+        #     display.blit(label, (self.rect[0], self.rect[1] + 30))
 
     def collide(self, entity):
         ax1 = self.rect[0]
@@ -106,8 +105,14 @@ class Entity:
 
 class Player(Entity):
     def __init__(self):
-        super().__init__("United States")
-        self.speed = WALK_SPEED * 1.1
+        country = get_country()
+        super().__init__(country["code"])
+        self.speed = WALK_SPEED * 1.5
+        self.character.health = int(country["population"])
+        self.character.healthMax = int(country["population"])
+        self.character.name = country["country"]
+        self.rect[0] = 0
+        self.rect[1] = 10
 
     def control(self):
         for key, pressed in enumerate(pygame.key.get_pressed()):
@@ -118,21 +123,42 @@ class Player(Entity):
 class NPC(Entity):
     def __init__(self, code):
         super().__init__(code)
+        self.target = None
+        self.character.name = "Man"
+
         self.movement = None
         self.last_direction_choice = time.time()
 
         self.change_direction()
-        self.character.name = "Man"
 
     def change_direction(self):
         if random.randint(0, 5) == 1 or isinstance(self.movement, type(None)):
             self.movement = [random.randint(-1, 1), random.randint(-1, 1)]
 
+    def get_speed(self):
+        self.y_dist = -(self.rect[1] - self.target.rect[1])
+        self.x_dist = -(self.rect[0] - self.target.rect[0])
+        return (1 if self.x_dist > 0 else (-1 if self.x_dist < 0 else 0), (1 if self.y_dist > 0 else (-1 if self.y_dist < 0 else 0)))
+
+    def get_target(self):
+        remaining = list(filter(lambda x: x.character.name not in destroyed, entities))
+        targets = list(
+            filter(lambda x: x.character.health < self.character.health, remaining)
+        )
+        if targets and self.target not in targets:
+            self.target = random.choice(targets)
+        elif not targets:
+            self.target = None
+
     def control(self):
-        if self.last_direction_choice + DIRECTION_CHOICE_INTERVAL < time.time():
-            self.last_direction_choice = time.time()
-            self.change_direction()
-        self.move(tuple(self.movement))
+        self.get_target()
+        if self.target:
+            self.move(self.get_speed())
+        else:
+            if self.last_direction_choice + DIRECTION_CHOICE_INTERVAL < time.time():
+                self.last_direction_choice = time.time()
+                self.change_direction()
+            self.move(tuple(self.movement))
 
 
 def reset_background(size):
@@ -156,12 +182,26 @@ def get_exists(country):
     return False
 
 
+def get_country():
+    country = random.choice(countries)
+    while (
+        not country["population"]
+        or not country["code"]
+        or country["country"] in destroyed
+        or get_exists(country["country"])
+    ):
+        country = random.choice(countries)
+    return country
+
+
 def add_players():
     for i in range(0, 10):
-        country = random.choice(countries)
-        while not country["population"] or not country["code"] or country["country"] in destroyed or get_exists(country["country"]):
-            country = random.choice(countries)
+        country = get_country()
         npc = NPC(country["code"])
+
+        if isinstance(npc.surface, type(None)):
+            # Could not get flag
+            continue
 
         npc.character.health = int(country["population"])
         npc.character.healthMax = int(country["population"])
@@ -191,6 +231,8 @@ HEALTH_COLORS = {
     0: (255, 0, 0),
 }
 
+destroyed = []
+
 WIDTH = 50
 DEFAULT_SIZE = [1000, 700]
 display = pygame.display.set_mode(DEFAULT_SIZE, pygame.RESIZABLE)
@@ -211,9 +253,9 @@ reset_background(DEFAULT_SIZE)
 MOVE_TIME = 0.001
 DIRECTION_CHOICE_INTERVAL = 0.1
 WALK_SPEED = 0.7
-ATTACK_INTERVAL = .01
+ATTACK_INTERVAL = 0.01
 
-FONT = pygame.font.SysFont('Arial', 10)
+FONT = pygame.font.SysFont("Arial", 10)
 
 entities = []
 
@@ -223,13 +265,11 @@ entities.append(player)
 
 running = True
 
-destroyed = []
-
 add_players()
 
 while running:
 
-    time.sleep(0.000001)
+    time.sleep(0.000_001)
 
     display.blit(background_surface, (0, 0))
 
